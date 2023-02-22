@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-void show_fd(int pid, bool fd_state, bool filename_state, bool inode_state)
+void show_fd(int pid, int threshold, bool pid_stat, bool fd_state, bool filename_state, bool inode_state, bool threshold_state)
 {
     DIR *dir;
     struct dirent *dir_entry;
@@ -37,8 +37,9 @@ void show_fd(int pid, bool fd_state, bool filename_state, bool inode_state)
                 else
                 {
                     char *buf = malloc(1024);
-
-                    printf("%d   ", pid);
+                    if(pid_stat){
+                         printf("%d   ", pid);
+                    }
                     if (fd_state)
                     {
                         printf("%d   ", fd);
@@ -69,7 +70,7 @@ void show_fd(int pid, bool fd_state, bool filename_state, bool inode_state)
     }
 }
 
-void find_proce(bool fd_state, bool filename_state, bool inode_state)
+void find_proce(int threshold, bool fd_state, bool pid_stat, bool filename_state, bool inode_state, bool threshold_state)
 {
     char uid[16];
     sprintf(uid, "%d", getuid()); // Get the user ID as a string
@@ -117,7 +118,7 @@ void find_proce(bool fd_state, bool filename_state, bool inode_state)
                 if (atoi(uid) == uid_int)
                 {
 
-                    show_fd(pid, fd_state, filename_state, inode_state);
+                    show_fd(pid,threshold, pid_stat, fd_state, filename_state, inode_state, threshold_state);
                 }
             }
         }
@@ -129,13 +130,15 @@ void find_proce(bool fd_state, bool filename_state, bool inode_state)
 
 int main(int argc, char *argv[])
 {
+    int threshold = -1;
+
 
     if (argc == 1) // if user enter 0 command line arguments
     {
         // show defalut composite table
         printf("PID     FD    Filename                         Inode\n");
         printf("=====================================================\n");
-        find_proce(true, true, true);
+        find_proce(true,true, true, true,false);
         printf("=====================================================\n");
     }
     else
@@ -148,34 +151,41 @@ int main(int argc, char *argv[])
             {
                 printf("PID     FD    \n");
                 printf("===============\n");
-                find_proce(true, false, false);
+                find_proce(threshold,true,true, false, false,false);
                 printf("===============\n");
             }
             else if (strcmp(argv[i], "--systemWide") == 0)
             {
                 printf("PID     FD    Filename                         \n");
                 printf("===============================================\n");
-                find_proce(true, true, false);
+                find_proce(threshold, true,true, true, false,false);
                 printf("===============================================\n");
             }
             else if (strcmp(argv[i], "--Vnodes") == 0)
             {
                 printf("PID      Inode \n");
                 printf("====================\n");
-                find_proce(false, false, true);
+                find_proce(threshold,true,false, false, true,false);
                 printf("====================\n");
             }
             else if (strcmp(argv[i], "--composite") == 0)
             {
                 printf("PID     FD    Filename                         Inode\n");
                 printf("=====================================================\n");
-                find_proce(true, true, true);
+                find_proce(threshold,false,true, true, true,false);
                 printf("=====================================================\n");
             }
-            //  else if (sscanf(argv[i], "--threshold=%d", &sample_size) == 1 && (sample_size > 0))
-            //  {
-            //     printf("The current sample size is %d\n", sample_size);
-            //  }
+             else if (sscanf(argv[i], "--threshold=%d", &threshold) == 1)
+             {
+                if(threshold < 0){
+                    printf("Invalid input");
+                }
+                else{
+                    printf("## Offending processes:\n");
+                    find_proce(threshold,false,false,false,false,true);
+                }
+                
+             }
             else
             {
                 perror("Invalid command line arguments\n"); // display error message for any other arguments

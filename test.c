@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-void show_fd(int pid, int threshold, bool pid_stat, bool fd_state, bool filename_state, bool inode_state, bool threshold_state)
+void show_fd(int pid, bool fd_state, bool pid_state, bool filename_state, bool inode_state)
 {
     DIR *dir;
     struct dirent *dir_entry;
@@ -37,7 +37,7 @@ void show_fd(int pid, int threshold, bool pid_stat, bool fd_state, bool filename
                 else
                 {
                     char *buf = malloc(1024);
-                    if (pid_stat)
+                    if (pid_state)
                     {
                         printf("%d   ", pid);
                     }
@@ -71,7 +71,33 @@ void show_fd(int pid, int threshold, bool pid_stat, bool fd_state, bool filename
     }
 }
 
-void find_proce(int threshold, bool fd_state, bool pid_stat, bool filename_state, bool inode_state, bool threshold_state)
+
+void show_threshold(int pid, int threshold){
+    DIR *dir;
+    struct dirent *dir_entry;
+    char str[40];
+    struct stat info;
+    sprintf(str, "/proc/%d/fd", pid);
+    if ((dir = opendir(str)) == NULL)
+    {
+        printf("PID:%d open fail\n", pid);
+    }
+    else
+    {
+        int count = 0;
+        while ((dir_entry = readdir(dir)) != NULL)
+        {
+            count++;
+        }
+        if(count-2>threshold){
+            printf("%d (%d), ", pid,count-2);
+        }
+        closedir(dir);
+    }
+
+}
+
+void find_proce(int threshold, bool threshold_state,bool fd_state, bool pid_state, bool filename_state, bool inode_state)
 {
     char uid[16];
     sprintf(uid, "%d", getuid()); // Get the user ID as a string
@@ -118,8 +144,12 @@ void find_proce(int threshold, bool fd_state, bool pid_stat, bool filename_state
 
                 if (atoi(uid) == uid_int)
                 {
-
-                    show_fd(pid, threshold, pid_stat, fd_state, filename_state, inode_state, threshold_state);
+                    if(threshold_state){
+                        show_threshold(pid,threshold);
+                    }
+                    else{
+                        show_fd(pid, fd_state, pid_state, filename_state, inode_state);
+                    }               
                 }
             }
         }
@@ -129,17 +159,71 @@ void find_proce(int threshold, bool fd_state, bool pid_stat, bool filename_state
     closedir(dir);
 }
 
-int main(int argc, char *argv[])
-{
+void show_tables(bool composite_state, bool process_state, bool systemWide_state, bool vnodes_state,int pid){
     int threshold = -1;
 
-    if (argc == 1) // if user enter 0 command line arguments
-    {
+    if(composite_state){
         // show defalut composite table
         printf("PID     FD    Filename                         Inode\n");
         printf("=====================================================\n");
-        find_proce(threshold, true, true, true, true, false);
+        if(pid == -1){
+            find_proce(threshold,false,true, true, true, true);
+        }
+        else{
+            show_fd(pid,true,true,true,true);
+        }
         printf("=====================================================\n");
+    }
+    if(process_state){
+        printf("PID     FD    \n");
+        printf("===============\n");
+        if(pid == -1){
+            find_proce(threshold,false,true, true, false, false);
+        }
+        else{
+            show_fd(pid,true,true,false,false);
+        }
+        printf("===============\n");
+    }
+    if(systemWide_state){
+        printf("PID     FD    Filename                         \n");
+        printf("===============================================\n");
+        if(pid == -1){
+            find_proce(threshold,false,true, true, true, false);
+        }
+        else{
+            show_fd(pid,true,true,true,false);
+        }
+        printf("===============================================\n");
+    }
+    if(vnodes_state){
+        printf("PID      Inode \n");
+        printf("====================\n");
+        if(pid == -1){
+            find_proce(threshold,false,true, false, false, true);
+        }
+        else{
+            show_fd(pid,true,false,false,true);
+        }
+        
+        printf("====================\n");
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    int threshold = -1;
+    int pid = -1;
+
+    bool composite_state = false;
+    bool process_state = false;
+    bool systemWide_state = false;
+    bool vnodes_state = false;
+    bool threshold_state = false;
+
+    if (argc == 1) // if user enter 0 command line arguments
+    {
+       show_tables(true,false,false,false,pid);
     }
     else
     {
@@ -149,31 +233,19 @@ int main(int argc, char *argv[])
             // if valid arguments enterd, activiate corresponding state
             if (strcmp(argv[i], "--per-process") == 0)
             {
-                printf("PID     FD    \n");
-                printf("===============\n");
-                find_proce(threshold, true, true, false, false, false);
-                printf("===============\n");
+                process_state = true;
             }
             else if (strcmp(argv[i], "--systemWide") == 0)
             {
-                printf("PID     FD    Filename                         \n");
-                printf("===============================================\n");
-                find_proce(threshold, true, true, true, false, false);
-                printf("===============================================\n");
+               systemWide_state = true;
             }
             else if (strcmp(argv[i], "--Vnodes") == 0)
             {
-                printf("PID      Inode \n");
-                printf("====================\n");
-                find_proce(threshold, true, false, false, true, false);
-                printf("====================\n");
+                vnodes_state = true;
             }
             else if (strcmp(argv[i], "--composite") == 0)
             {
-                printf("PID     FD    Filename                         Inode\n");
-                printf("=====================================================\n");
-                find_proce(threshold, false, true, true, true, false);
-                printf("=====================================================\n");
+               composite_state = true;
             }
             else if (sscanf(argv[i], "--threshold=%d", &threshold) == 1)
             {
@@ -183,8 +255,13 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("## Offending processes:\n");
-                    find_proce(threshold, false, false, false, false, true);
+                    threshold_state = true;
+                   
+                }
+            }
+            else if (sscanf(argv[i], "%d", &pid) == 1 ){
+                if(pid < 0){
+                    printf("User input PID invalid\n");
                 }
             }
             else
@@ -194,4 +271,19 @@ int main(int argc, char *argv[])
             }
         }
     }
+
+    if(pid != -1 && argc == 2){
+        printf("3");
+        composite_state = true;
+    }
+
+    show_tables(composite_state,process_state,systemWide_state,vnodes_state,pid);
+
+    if(threshold_state){
+        printf("## Offending processes:\n");
+        find_proce(threshold,true,false, false, false, false);
+        printf("\n");
+    }
+
+
 }

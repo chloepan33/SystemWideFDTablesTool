@@ -9,13 +9,23 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
+/**
+ * @brief Given a pid, displaying information related to that specific pid.
+ *
+ * @param pid Target pid number
+ * @param fd_state indication to show fd number or not
+ * @param pid_state indication to show pid number or not
+ * @param filename_state indication to show filename or not
+ * @param inode_state indication to show inode or not
+ */
+
 void show_fd(int pid, bool fd_state, bool pid_state, bool filename_state, bool inode_state)
 {
     DIR *dir;
     struct dirent *dir_entry;
     char str[40];
     struct stat info;
-    sprintf(str, "/proc/%d/fd", pid);
+    sprintf(str, "/proc/%d/fd", pid); // open direcrtory for target PID
     if ((dir = opendir(str)) == NULL)
     {
         printf("PID:%d open fail\n", pid);
@@ -23,9 +33,9 @@ void show_fd(int pid, bool fd_state, bool pid_state, bool filename_state, bool i
     else
     {
         int i = 1;
-        while ((dir_entry = readdir(dir)) != NULL)
+        while ((dir_entry = readdir(dir)) != NULL) // loop all fd subdirectories
         {
-            if (i > 2)
+            if (i > 2) // skip first two fd subdirectory
             {
                 char path[50];
                 int fd = atoi(dir_entry->d_name);
@@ -36,6 +46,7 @@ void show_fd(int pid, bool fd_state, bool pid_state, bool filename_state, bool i
                 }
                 else
                 {
+                    // show related fd infomations based on state informations
                     char *buf = malloc(1024);
                     if (pid_state)
                     {
@@ -71,20 +82,27 @@ void show_fd(int pid, bool fd_state, bool pid_state, bool filename_state, bool i
     }
 }
 
+/**
+ * @brief Given target pid and seted threshold, print the pid number and its FD numbers if FD number is larger than threshold
+ *
+ * @param pid target pid
+ * @param threshold thershold
+ */
 void show_threshold(int pid, int threshold)
 {
     DIR *dir;
     struct dirent *dir_entry;
     char str[40];
+    struct stat info;
     sprintf(str, "/proc/%d/fd", pid);
-    if ((dir = opendir(str)) == NULL)
+    if ((dir = opendir(str)) == NULL) // open target pid directory
     {
         printf("PID:%d open fail\n", pid);
     }
     else
     {
         int count = 0;
-        while ((dir_entry = readdir(dir)) != NULL)
+        while ((dir_entry = readdir(dir)) != NULL) // loop all FDs and count
         {
             count++;
         }
@@ -96,6 +114,16 @@ void show_threshold(int pid, int threshold)
     }
 }
 
+/**
+ * @brief find loop through all pid owned by current user and show FDs information for each pid
+ *
+ * @param threshold threshold
+ * @param threshold_state indication to display threshold information or not
+ * @param fd_state indication to show fd number or not
+ * @param pid_state indication to show pid number or not
+ * @param filename_state indication to show filename or not
+ * @param inode_state indication to show inode or not
+ */
 void find_proce(int threshold, bool threshold_state, bool fd_state, bool pid_state, bool filename_state, bool inode_state)
 {
     char uid[16];
@@ -138,10 +166,11 @@ void find_proce(int threshold, bool threshold_state, bool fd_state, bool pid_sta
             if (strncmp(line, "Uid:", 4) == 0)
             {
                 int uid_int;
-                sscanf(line, "Uid:\t%d", &uid_int);
+                sscanf(line, "Uid:\t%d", &uid_int); // get user id for the current directory
 
-                if (atoi(uid) == uid_int)
+                if (atoi(uid) == uid_int) // compare directory's uid with current user id
                 {
+                    // show information only the directory is owned by current user
                     if (threshold_state)
                     {
                         show_threshold(pid, threshold);
@@ -159,13 +188,23 @@ void find_proce(int threshold, bool threshold_state, bool fd_state, bool pid_sta
     closedir(dir);
 }
 
+/**
+ * @brief given flagged that indicate to show which tables, print headers for each table and set correspoding information state
+ *        if a specific pid is given, only display that pid's info
+ *
+ * @param composite_state indication to print composite table
+ * @param process_state indication to print process table
+ * @param systemWide_state indication to print systemWide table
+ * @param vnodes_state indication to print vnode table
+ * @param pid targeted pid, equals to -1 if want to read through all avaliable pids
+ */
 void show_tables(bool composite_state, bool process_state, bool systemWide_state, bool vnodes_state, int pid)
 {
     int threshold = -1;
 
     if (composite_state)
     {
-        // show defalut composite table
+        // show composite table
         printf("PID     FD    Filename                         Inode\n");
         printf("=====================================================\n");
         if (pid == -1)
@@ -180,6 +219,7 @@ void show_tables(bool composite_state, bool process_state, bool systemWide_state
     }
     if (process_state)
     {
+        // show process table
         printf("PID     FD    \n");
         printf("===============\n");
         if (pid == -1)
@@ -194,6 +234,7 @@ void show_tables(bool composite_state, bool process_state, bool systemWide_state
     }
     if (systemWide_state)
     {
+        // show systemWide table
         printf("PID     FD    Filename                         \n");
         printf("===============================================\n");
         if (pid == -1)
@@ -208,6 +249,7 @@ void show_tables(bool composite_state, bool process_state, bool systemWide_state
     }
     if (vnodes_state)
     {
+        // show vnodes table
         printf("PID      Inode \n");
         printf("====================\n");
         if (pid == -1)
@@ -222,6 +264,12 @@ void show_tables(bool composite_state, bool process_state, bool systemWide_state
     }
 }
 
+/**
+ * @brief save composite table to a file, either in txt or binary format
+ *
+ * @param filename target file name
+ * @param mode indicate to write in TXT form or binary form
+ */
 void save_output(char *filename, char *mode)
 {
     FILE *output = fopen(filename, mode);
@@ -268,7 +316,7 @@ void save_output(char *filename, char *mode)
                 int uid_int;
                 sscanf(line, "Uid:\t%d", &uid_int);
 
-                if (atoi(uid) == uid_int)
+                if (atoi(uid) == uid_int) // check if the current user own this pid directory
                 {
                     DIR *dir;
                     struct dirent *dir_entry;
@@ -282,7 +330,7 @@ void save_output(char *filename, char *mode)
                     else
                     {
                         int i = 1;
-                        while ((dir_entry = readdir(dir)) != NULL)
+                        while ((dir_entry = readdir(dir)) != NULL) // loop all FDs
                         {
                             if (i > 2)
                             {
@@ -297,15 +345,21 @@ void save_output(char *filename, char *mode)
                                 {
                                     char *filename = malloc(512);
                                     char inf[1024];
-                                    if (readlink(path,filename,512)!= -1){
-                                        sprintf(inf,"%ld   %d   %s   %ld\n",pid,fd,filename,info.st_ino);
+                                    if (readlink(path, filename, 512) != -1)
+                                    {
+                                        // store all information in a string
+                                        sprintf(inf, "%ld   %d   %s   %ld\n", pid, fd, filename, info.st_ino);
                                     }
-                                    if(strcmp(mode,"w") == 0){
-                                        fprintf(output,"%s",inf);
-                                    }else{
-                                        fwrite(inf,1,sizeof(inf),output);
+                                    // check to see which format to write into
+                                    if (strcmp(mode, "w") == 0)
+                                    {
+                                        fprintf(output, "%s", inf);
                                     }
-                                    
+                                    else
+                                    {
+                                        fwrite(inf, 1, sizeof(inf), output);
+                                    }
+
                                     free(filename);
                                 }
                             }
@@ -327,6 +381,7 @@ void save_output(char *filename, char *mode)
 
 int main(int argc, char *argv[])
 {
+    //set default value for all states
     int threshold = -1;
     int pid = -1;
 
@@ -340,7 +395,7 @@ int main(int argc, char *argv[])
 
     if (argc == 1) // if user enter 0 command line arguments
     {
-    
+        //display default composite fd table
         show_tables(true, false, false, false, pid);
     }
     else
@@ -399,11 +454,13 @@ int main(int argc, char *argv[])
         }
     }
 
+    // if only enterd one positional argument, activate composite table state
     if (pid != -1 && argc == 2)
     {
         composite_state = true;
     }
 
+    //displaying tables
     show_tables(composite_state, process_state, systemWide_state, vnodes_state, pid);
 
     if (threshold_state)
@@ -413,10 +470,13 @@ int main(int argc, char *argv[])
         printf("\n");
     }
 
-    if(output_txt){
-        save_output("compositeTable.txt","w");
+    //save output based on user input flags
+    if (output_txt)
+    {
+        save_output("compositeTable.txt", "w");
     }
-    if(output_bi){
-        save_output("compositeTable.bin","wb");
+    if (output_bi)
+    {
+        save_output("compositeTable.bin", "wb");
     }
 }

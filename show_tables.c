@@ -93,7 +93,6 @@ void show_threshold(int pid, int threshold)
     DIR *dir;
     struct dirent *dir_entry;
     char str[40];
-    struct stat info;
     sprintf(str, "/proc/%d/fd", pid);
     if ((dir = opendir(str)) == NULL) // open target pid directory
     {

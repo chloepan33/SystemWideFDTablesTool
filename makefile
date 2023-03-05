@@ -8,7 +8,7 @@ show_tables: show_tables.c
 ## clean: remove the showFDtables executable and all its output files
 .PHONY: clean
 clean:
-	rm -f showFDtables compositeTable.txt compositeTable.bin
+	rm -f show_tables compositeTable.txt compositeTable.bin
 
 ## help: display this help message
 .PHONY: help

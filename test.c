@@ -136,7 +136,6 @@ void find_proce(int threshold, bool threshold_state,bool fd_state, bool pid_stat
 
         while (fgets(line, sizeof(line), fp))
         {
-
             if (strncmp(line, "Uid:", 4) == 0)
             {
                 int uid_int;
@@ -200,14 +199,106 @@ void show_tables(bool composite_state, bool process_state, bool systemWide_state
         printf("PID      Inode \n");
         printf("====================\n");
         if(pid == -1){
-            find_proce(threshold,false,true, false, false, true);
+            find_proce(threshold,false,false,true, false, true);
         }
         else{
-            show_fd(pid,true,false,false,true);
-        }
-        
+            show_fd(pid,false,true,false,true);
+        }   
         printf("====================\n");
     }
+}
+
+void save_output(char *filename, char *mode){
+    FILE *fp = fopen(filename,mode);
+
+    char uid[16];
+    sprintf(uid, "%d", getuid()); // Get the user ID as a string
+
+    DIR *dir;
+    struct dirent *ent;
+    char buf[512];
+    char *endptr;
+    long pid;
+
+    // Open the /proc directory
+    if ((dir = opendir("/proc")) == NULL)
+    {
+        perror("opendir");
+        exit(EXIT_FAILURE);
+    }
+
+    // Read each directory in /proc
+    while ((ent = readdir(dir)) != NULL)
+    {
+        // Check if the directory name is a number (i.e. a PID)
+        pid = strtol(ent->d_name, &endptr, 10);
+        if (*endptr != '\0')
+        {
+            continue;
+        }
+
+        // Check if the process owner is the current user
+        sprintf(buf, "/proc/%ld/status", pid);
+        FILE *fp = fopen(buf, "r");
+        if (fp == NULL)
+        {
+            continue;
+        }
+        char line[256];
+
+        while (fgets(line, sizeof(line), fp))
+        {
+            if (strncmp(line, "Uid:", 4) == 0)
+            {
+                int uid_int;
+                sscanf(line, "Uid:\t%d", &uid_int);
+
+                if (atoi(uid) == uid_int)
+                {
+                    DIR *dir;
+                    struct dirent *dir_entry;
+                    char str[40];
+                    struct stat info;
+                    sprintf(str, "/proc/%d/fd", pid);
+                    if ((dir = opendir(str)) == NULL)
+                    {
+                        printf("PID:%d open fail\n", pid);
+                    }
+                    else
+                    {
+                        int i = 1;
+                        while ((dir_entry = readdir(dir)) != NULL)
+                        {
+                            if (i > 2)
+                            {
+                                char path[50];
+                                int fd = atoi(dir_entry->d_name);
+                                sprintf(path, "/proc/%d/fd/%d", pid, fd);
+                                if (stat(path, &info) != 0)
+                                {
+                                    perror("stat() error");
+                                }
+                                else
+                                {
+                                    char *buf = malloc(1024);
+                    
+                     free(buf);
+                    }
+                 }
+
+                i++;
+            }
+            closedir(dir);
+    }
+                }
+            }
+        }
+        fclose(fp);
+    }
+
+    closedir(dir);
+
+    fclose(fp);
 }
 
 int main(int argc, char *argv[])
@@ -220,6 +311,10 @@ int main(int argc, char *argv[])
     bool systemWide_state = false;
     bool vnodes_state = false;
     bool threshold_state = false;
+    bool output_bi = false;
+    bool output_txt = false;
+    
+
 
     if (argc == 1) // if user enter 0 command line arguments
     {
@@ -264,6 +359,12 @@ int main(int argc, char *argv[])
                     printf("User input PID invalid\n");
                 }
             }
+            else if (strcmp(argv[i], "--output_TXT") == 0){
+                output_txt = true;
+            }
+            else if (strcmp(argv[i], "--output_binary") == 0){
+                output_bi = true;
+            }
             else
             {
                 perror("Invalid command line arguments\n"); // display error message for any other arguments
@@ -273,10 +374,10 @@ int main(int argc, char *argv[])
     }
 
     if(pid != -1 && argc == 2){
-        printf("3");
         composite_state = true;
     }
 
+ 
     show_tables(composite_state,process_state,systemWide_state,vnodes_state,pid);
 
     if(threshold_state){

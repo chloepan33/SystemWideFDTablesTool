@@ -275,10 +275,10 @@ void save_output(char *filename, char *mode)
                     struct dirent *dir_entry;
                     char str[40];
                     struct stat info;
-                    sprintf(str, "/proc/%d/fd", pid);
+                    sprintf(str, "/proc/%ld/fd", pid);
                     if ((dir = opendir(str)) == NULL)
                     {
-                        printf("PID:%d open fail\n", pid);
+                        printf("PID:%ld open fail\n", pid);
                     }
                     else
                     {
@@ -289,7 +289,7 @@ void save_output(char *filename, char *mode)
                             {
                                 char path[50];
                                 int fd = atoi(dir_entry->d_name);
-                                sprintf(path, "/proc/%d/fd/%d", pid, fd);
+                                sprintf(path, "/proc/%ld/fd/%d", pid, fd);
                                 if (stat(path, &info) != 0)
                                 {
                                     perror("stat() error");
@@ -299,9 +299,14 @@ void save_output(char *filename, char *mode)
                                     char *filename = malloc(512);
                                     char inf[1024];
                                     if (readlink(path,filename,512)!= -1){
-                                        sprint(inf,"%d   %d   %s   %ld\n",pid,fd,filename,info.st_ino);
+                                        sprintf(inf,"%ld   %d   %s   %ld\n",pid,fd,filename,info.st_ino);
                                     }
-                                    fprintf(output,"%s",info);
+                                    if(strcmp(mode,"w") == 0){
+                                        fprintf(output,"%s",inf);
+                                    }else{
+                                        fwrite(inf,1,sizeof(inf),output);
+                                    }
+                                    
                                     free(filename);
                                 }
                             }
@@ -336,6 +341,7 @@ int main(int argc, char *argv[])
 
     if (argc == 1) // if user enter 0 command line arguments
     {
+    
         show_tables(true, false, false, false, pid);
     }
     else
@@ -406,5 +412,12 @@ int main(int argc, char *argv[])
         printf("## Offending processes:\n");
         find_proce(threshold, true, false, false, false, false);
         printf("\n");
+    }
+
+    if(output_txt){
+        save_output("compositeTable.txt","w");
+    }
+    if(output_bi){
+        save_output("compositeTable.bin","wb");
     }
 }

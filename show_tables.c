@@ -96,7 +96,7 @@ void show_threshold(int pid, int threshold)
     sprintf(str, "/proc/%d/fd", pid);
     if ((dir = opendir(str)) == NULL) // open target pid directory
     {
-        printf("PID:%d open fail\n", pid);
+        printf(" ");
     }
     else
     {
@@ -324,7 +324,7 @@ void save_output(char *filename, char *mode)
                     sprintf(str, "/proc/%ld/fd", pid);
                     if ((dir = opendir(str)) == NULL)
                     {
-                        printf("PID:%ld open fail\n", pid);
+                        printf(" ");
                     }
                     else
                     {

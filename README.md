@@ -78,11 +78,13 @@ PID     FD    Filename                         Inode
 
 The following command line arguments are available for use and can be **combined**.
 
-- **`-per-process`**: Display the process FD table.
-- **`-systemWide`**: Display the system-wide FD table.
-- **`-Vnodes`**: Display the Vnodes FD table.
-- **`-composite`**: Display the composed view of all three tables.
-- **`-threshold=X`**: Flag processes with more than X FDs assigned.
+- **`--per-process`**: Display the process FD table.
+- **`--systemWide`**: Display the system-wide FD table.
+- **`--Vnodes`**: Display the Vnodes FD table.
+- **`--composite`**: Display the composed view of all three tables.
+- **`--threshold=X`**: Flag processes with more than X FDs assigned.
+- **`--output_TXT`**: Save composite table in text (ASCII) into a file named compositeTable.txt.
+- **`--output_binary`**: Save composite table in binary format into a file named compositeTable.bin.
 
 The program also takes propositional arguments indicating a particular process ID number (PID). 
 
